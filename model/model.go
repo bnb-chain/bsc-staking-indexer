@@ -11,7 +11,6 @@ import (
 )
 
 // ValidatorInfo is a model for the validator_info table.
-// query stakeHub getValidators at startup only once and only their validator?
 type ValidatorInfo struct {
 	ID uint64 `gorm:"column:id;primaryKey"`
 
@@ -36,8 +35,7 @@ type Validator struct {
 }
 
 // Delegator is a model for the delegator table.
-// only record their delegator from config.
-// need listen stakeHub Delegated event?
+// only record delegators from config.
 type Delegator struct {
 	ID uint64 `gorm:"column:id;primaryKey"`
 
