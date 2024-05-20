@@ -67,7 +67,8 @@ type DelegateTx struct {
 	DstOperator common.Address `gorm:"column:dst_operator"`
 	Action      DelegateAction `gorm:"column:action"`
 	Amount      *Big           `gorm:"column:amount;type:VARBINARY(32)"`
-	TxHash      common.Hash    `gorm:"column:tx_hash;uniqueIndex:idx_tx_hash"`
+	TxHash      common.Hash    `gorm:"column:tx_hash;uniqueIndex:idx_tx_hash"`g
+	Timestamp   int64          `gorm:"column:timestamp"`
 }
 
 // BreathBlockRewardEvent
