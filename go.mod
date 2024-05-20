@@ -4,15 +4,7 @@ go 1.21.2
 
 toolchain go1.21.6
 
-require (
-	github.com/avast/retry-go/v4 v4.6.0
-	github.com/bnb-chain/bsc-mev-sentry v1.0.6
-	github.com/ethereum/go-ethereum v1.14.3
-	github.com/json-iterator/go v1.1.12
-	github.com/stretchr/testify v1.9.0
-	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.27.0
-)
+require github.com/ethereum/go-ethereum v1.14.3
 
 require (
 	github.com/DataDog/zstd v1.5.5 // indirect
@@ -52,6 +44,7 @@ require (
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/go-playground/validator/v10 v10.14.0 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
@@ -76,14 +69,11 @@ require (
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/panjf2000/ants/v2 v2.4.5 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.18.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/common v0.47.0 // indirect
@@ -103,6 +93,7 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect
+	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/syndtr/goleveldb v1.0.1 // indirect
 	github.com/tendermint/go-amino v0.14.1 // indirect
@@ -127,7 +118,6 @@ require (
 	google.golang.org/grpc v1.56.3 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
