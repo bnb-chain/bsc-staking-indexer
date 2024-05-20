@@ -30,7 +30,7 @@ type Validator struct {
 	// TotalPooledBNB query StakeCredit totalPooledBNBRecord at the end of the day
 	TotalPooledBNB *Big `gorm:"column:total_pooled_bnb;type:VARBINARY(32)"`
 	// TotalCreditToken query StakeCredit _totalSupply at the previous block of the breathing block
-	TotalCreditToken *Big `gorm:"column:total_credit_token"`
+	TotalCreditToken *Big `gorm:"column:total_credit_token;type:VARBINARY(32)"`
 
 	Date int64 `gorm:"column:date;uniqueIndex:idx_operator_date"`
 }
