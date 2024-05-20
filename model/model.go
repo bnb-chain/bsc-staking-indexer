@@ -95,16 +95,10 @@ type SlashEvent struct {
 	Date int64 `gorm:"column:date;index:idx_date"`
 }
 
-// Header is a model for the header table.
-type Header struct {
-	ID uint64 `gorm:"column:id;primaryKey" rlp:"-"`
-
-	Number     uint64      `gorm:"column:number;uniqueIndex:idx_number"`
-	Hash       common.Hash `gorm:"column:hash;type:BINARY(32)"`
-	ParentHash common.Hash `gorm:"column:parent_hash;type:BINARY(32)"`
-	Timestamp  int64       `gorm:"column:timestamp"`
-
-	Date int64 `gorm:"column:date;index:idx_date"`
+// Cursor helps to record number cursor.
+type Cursor struct {
+	OneRowId bool  `gorm:"one_row_id;not null;default:true;primaryKey"`
+	Number   int64 `gorm:"number"`
 }
 
 type Big big.Int
