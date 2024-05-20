@@ -32,7 +32,7 @@ type Validator struct {
 	// TotalCreditToken query StakeCredit _totalSupply at the previous block of the breathing block
 	TotalCreditToken *Big `gorm:"column:total_credit_token"`
 
-	Date uint64 `gorm:"column:date;uniqueIndex:idx_operator_date"`
+	Date int64 `gorm:"column:date;uniqueIndex:idx_operator_date"`
 }
 
 // Delegator is a model for the delegator table.
@@ -46,7 +46,7 @@ type Delegator struct {
 	// Amount query stakeCredit getPooledBNB interface at the previous block of the breathing block
 	Amount *Big `gorm:"column:amount;type:VARBINARY(32)"`
 
-	Date uint64 `gorm:"column:date;index:idx_date"`
+	Date int64 `gorm:"column:date;index:idx_date"`
 }
 
 type DelegateAction string
@@ -78,7 +78,8 @@ type BreathBlockRewardEvent struct {
 	Credit                common.Address `gorm:"column:operator;uniqueIndex:idx_credit_date"`
 	RewardAfterCommission *Big           `gorm:"column:reward_after_commission;type:VARBINARY(32)"`
 	Commission            *Big           `gorm:"column:commission;type:VARBINARY(32)"`
-	Date                  uint64         `gorm:"column:date;uniqueIndex:idx_credit_date"`
+
+	Date int64 `gorm:"column:date;uniqueIndex:idx_credit_date"`
 }
 
 // SlashEvent
@@ -89,7 +90,8 @@ type SlashEvent struct {
 	Operator common.Address `gorm:"column:operator;index:idx_operator"`
 	Amount   *Big           `gorm:"column:amount;type:VARBINARY(32)"`
 	TxHash   common.Hash    `gorm:"column:tx_hash;uniqueIndex:idx_tx_hash"`
-	Date     uint64         `gorm:"column:date;index:idx_date"`
+
+	Date int64 `gorm:"column:date;index:idx_date"`
 }
 
 // Header is a model for the header table.
@@ -99,8 +101,9 @@ type Header struct {
 	Number     uint64      `gorm:"column:number;uniqueIndex:idx_number"`
 	Hash       common.Hash `gorm:"column:hash;type:BINARY(32)"`
 	ParentHash common.Hash `gorm:"column:parent_hash;type:BINARY(32)"`
-	Timestamp  uint64      `gorm:"column:timestamp"`
-	Date       uint64      `gorm:"column:date;index:idx_date"`
+	Timestamp  int64       `gorm:"column:timestamp"`
+
+	Date int64 `gorm:"column:date;index:idx_date"`
 }
 
 type Big big.Int
