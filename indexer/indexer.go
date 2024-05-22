@@ -110,6 +110,7 @@ type indexer struct {
 	cursor                    int64
 	NumberOfBlocksForFinality int64
 	delegators                []common.Address
+	parentHeader              *types.Header
 
 	store        store.Store
 	client       *ethclient.Client
@@ -146,7 +147,6 @@ func (i *indexer) index(ctx context.Context) error {
 		return err
 	}
 
-	var parentHeader *types.Header
 	for number := i.cursor + 1; number <= finalizedHeader.Number.Int64(); number++ {
 		var header *types.Header
 		if number == finalizedHeader.Number.Int64() {
@@ -162,10 +162,10 @@ func (i *indexer) index(ctx context.Context) error {
 			}
 		}
 
-		if parentHeader == nil {
+		if i.parentHeader == nil {
 			if err := RtyDo(func() error {
 				var er error
-				parentHeader, er = i.client.HeaderByNumber(ctx, big.NewInt(number-1))
+				i.parentHeader, er = i.client.HeaderByNumber(ctx, big.NewInt(number-1))
 				return er
 			}); err != nil {
 				log.Errorw("indexer: failed to get header by number", "number", number-1, "err", err)
@@ -185,7 +185,7 @@ func (i *indexer) index(ctx context.Context) error {
 			return err
 		}
 
-		if isBreatheBlock(parentHeader.Time, header.Time) {
+		if isBreatheBlock(i.parentHeader.Time, header.Time) {
 			err = i.handleStakeCreditCalls(ctx, header)
 			if err != nil {
 				log.Errorw("indexer: failed to process validator and delegator", "err", err)
@@ -199,7 +199,8 @@ func (i *indexer) index(ctx context.Context) error {
 			return err
 		}
 
-		parentHeader = header
+		i.parentHeader = header
+		i.cursor = number
 	}
 
 	return nil
