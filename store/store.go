@@ -43,6 +43,8 @@ func NewStore(cfg mysqlclient.Config) (Store, error) {
 		func() error {
 			return db.Table((&model.BreathBlockRewardEvent{}).TableName()).AutoMigrate(&model.BreathBlockRewardEvent{})
 		},
+		func() error { return db.Table((&model.Validator{}).TableName()).AutoMigrate(&model.Validator{}) },
+		func() error { return db.Table((&model.Delegator{}).TableName()).AutoMigrate(&model.Delegator{}) },
 		func() error { return db.Table((&model.Cursor{}).TableName()).AutoMigrate(&model.Cursor{}) },
 	)
 	if err != nil {
