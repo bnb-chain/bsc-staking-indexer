@@ -7,10 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/node-real/go-pkg/utils/syncutils"
 
 	"github.com/bnb-chain/bsc-staking-indexer/model"
 	"github.com/bnb-chain/bsc-staking-indexer/util/log"
-	"github.com/bnb-chain/bsc-staking-indexer/util/syncutil"
 )
 
 var Address = common.HexToAddress("0x0000000000000000000000000000000000002002")
@@ -62,7 +62,7 @@ func (_contract *Contract) ParseDelegateTxs(header *types.Header, delegator []co
 		reDelegateIterator *ContractRedelegatedIterator
 	)
 
-	err := syncutil.BatchRun(
+	err := syncutils.BatchRun(
 		func() error {
 			var err error
 			delegateIterator, err = _contract.FilterDelegated(&bind.FilterOpts{Start: number, End: &number},

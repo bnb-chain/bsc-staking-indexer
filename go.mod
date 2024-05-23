@@ -10,13 +10,10 @@ require (
 	github.com/ethereum/go-ethereum v1.14.3
 	github.com/json-iterator/go v1.1.12
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
-	github.com/node-real/go-mysql-driver v1.7.3
-	github.com/node-real/go-pkg v0.0.6-0.20230628091501-d935f993848c
+	github.com/node-real/go-pkg v0.0.6-0.20240423064513-706f2c34df12
 	github.com/stretchr/testify v1.9.0
-	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.4
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	gorm.io/driver/mysql v1.5.6
 	gorm.io/gorm v1.25.10
 )
 
@@ -95,6 +92,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/naoina/go-stringutil v0.1.0 // indirect
+	github.com/node-real/go-mysql-driver v1.7.3 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/panjf2000/ants/v2 v2.4.5 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
@@ -128,6 +126,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
 	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
+	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.4 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelsql v0.2.4 // indirect
 	github.com/urfave/cli/v2 v2.26.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
@@ -143,11 +142,12 @@ require (
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
-	google.golang.org/grpc v1.56.3 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
+	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gorm.io/driver/mysql v1.5.6 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 

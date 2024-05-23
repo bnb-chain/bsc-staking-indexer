@@ -3,12 +3,12 @@ package store
 import (
 	"context"
 
+	"github.com/node-real/go-pkg/mysqlclient"
+	"github.com/node-real/go-pkg/utils/syncutils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"github.com/bnb-chain/bsc-staking-indexer/model"
-	"github.com/bnb-chain/bsc-staking-indexer/util/mysqlclient"
-	"github.com/bnb-chain/bsc-staking-indexer/util/syncutil"
 )
 
 type Store interface {
@@ -34,7 +34,7 @@ func NewStore(cfg mysqlclient.Config) (Store, error) {
 		return nil, err
 	}
 
-	err = syncutil.BatchRun(
+	err = syncutils.BatchRun(
 		func() error {
 			return db.Table((&model.ValidatorInfo{}).TableName()).AutoMigrate(&model.ValidatorInfo{})
 		},

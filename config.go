@@ -8,9 +8,9 @@ import (
 	"unicode"
 
 	"github.com/naoina/toml"
+	"github.com/node-real/go-pkg/mysqlclient"
 
 	"github.com/bnb-chain/bsc-staking-indexer/indexer"
-	"github.com/bnb-chain/bsc-staking-indexer/util/mysqlclient"
 )
 
 type Config struct {
