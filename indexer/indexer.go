@@ -87,12 +87,14 @@ func New(ctx context.Context, cfg Config, store store.Store) (Indexer, error) {
 	}
 
 	stakeCredits := make(map[common.Address]*stakecredit.ContractWithInfo)
+	stakeCreditAddresses := make([]common.Address, 0)
 	for _, v := range validatorInfos {
 		stakeCredits[v.Credit], err = stakecredit.New(v.Operator, v.Credit, client)
 		if err != nil {
 			log.Errorw("indexer: failed to new stakecredit", "err", err)
 			return nil, err
 		}
+		stakeCreditAddresses = append(stakeCreditAddresses, v.Credit)
 	}
 
 	return &indexer{
@@ -103,6 +105,7 @@ func New(ctx context.Context, cfg Config, store store.Store) (Indexer, error) {
 		client:                    client,
 		stakeHub:                  stakeHub,
 		stakeCredits:              stakeCredits,
+		stakeCreditAddresses:      stakeCreditAddresses,
 	}, nil
 }
 
@@ -116,6 +119,8 @@ type indexer struct {
 	client       *ethclient.Client
 	stakeHub     *stakehub.Contract
 	stakeCredits map[common.Address]*stakecredit.ContractWithInfo // credit address -> stake credit
+
+	stakeCreditAddresses []common.Address
 }
 
 func (i *indexer) Start(ctx context.Context) {
@@ -209,6 +214,10 @@ func (i *indexer) index(ctx context.Context) error {
 // handleStakeHubLogs
 // getLogs for ValidatorInfo, DelegatorTx, SlashEvent
 func (i *indexer) handleStakeHubLogs(ctx context.Context, header *types.Header) error {
+	if !bloomFilter(header.Bloom, []common.Address{stakehub.Address}, [][]common.Hash{stakehub.Topics}) {
+		return nil
+	}
+
 	var (
 		validatorInfos []*model.ValidatorInfo
 		delegateTxs    []*model.DelegateTx
@@ -273,6 +282,7 @@ func (i *indexer) handleStakeHubLogs(ctx context.Context, header *types.Header) 
 				log.Errorw("indexer: failed to new stakecredit", "err", err)
 			}
 			i.stakeCredits[v.Credit] = credit
+			i.stakeCreditAddresses = append(i.stakeCreditAddresses, v.Credit)
 		}
 	}
 
@@ -282,7 +292,12 @@ func (i *indexer) handleStakeHubLogs(ctx context.Context, header *types.Header) 
 // handleStakeCreditLogs
 // getLogs for BreathBlockRewardEvent
 func (i *indexer) handleStakeCreditLogs(ctx context.Context, header *types.Header) error {
+	if !bloomFilter(header.Bloom, i.stakeCreditAddresses, [][]common.Hash{stakecredit.Topics}) {
+		return nil
+	}
+
 	var events []*model.BreathBlockRewardEvent
+
 	for _, v := range i.stakeCredits {
 		breatheEvents, err := v.ParseBreathBlockEvents(header)
 		if err != nil {
@@ -380,4 +395,33 @@ func sameDayInUTC(first, second uint64) bool {
 
 func isBreatheBlock(lastBlockTime, blockTime uint64) bool {
 	return lastBlockTime != 0 && !sameDayInUTC(lastBlockTime, blockTime)
+}
+
+func bloomFilter(bloom types.Bloom, addresses []common.Address, topics [][]common.Hash) bool {
+	if len(addresses) > 0 {
+		var included bool
+		for _, addr := range addresses {
+			if types.BloomLookup(bloom, addr) {
+				included = true
+				break
+			}
+		}
+		if !included {
+			return false
+		}
+	}
+
+	for _, sub := range topics {
+		included := len(sub) == 0 // empty rule set == wildcard
+		for _, topic := range sub {
+			if types.BloomLookup(bloom, topic) {
+				included = true
+				break
+			}
+		}
+		if !included {
+			return false
+		}
+	}
+	return true
 }

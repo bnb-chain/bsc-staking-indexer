@@ -1,5 +1,5 @@
 [Indexer]
-RPCURL = "https://bsc-mainnet.nodereal.io/v1/2e9d633513f945d89ec95755ae183afd"
+RPCURL = "https://bsc-dataseed3.bnbchain.org"
 StartBlockNumber = 38843671
 NumberOfBlocksForFinality = 5
 Delegators = ["0x773760b0708a5Cc369c346993a0c225D8e4043B1"]

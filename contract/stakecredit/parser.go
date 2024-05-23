@@ -15,6 +15,12 @@ import (
 
 const BreatheBlockInterval = 86400
 
+var (
+	RewardReceived = common.HexToHash("0xfb0e1482d62102ab9594f69d4c6d693749e3e2bf1c21af272f5456b2d5a4f6b5")
+
+	Topics = []common.Hash{RewardReceived}
+)
+
 type ContractWithInfo struct {
 	*Contract
 	credit   common.Address
@@ -22,7 +28,7 @@ type ContractWithInfo struct {
 }
 
 func New(operator, credit common.Address, client *ethclient.Client) (*ContractWithInfo, error) {
-	contract, err := NewContract(operator, client)
+	contract, err := NewContract(credit, client)
 	if err != nil {
 		return nil, err
 	}

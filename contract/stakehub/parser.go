@@ -15,6 +15,16 @@ import (
 
 var Address = common.HexToAddress("0x0000000000000000000000000000000000002002")
 
+var (
+	ValidatorCreated = common.HexToHash("0xaecd9fb95e79c75a3a1de93362c6be5fe6ab65770d8614be583884161cd8228d")
+	ValidatorSlashed = common.HexToHash("0x6e9a2ee7aee95665e3a774a212eb11441b217e3e4656ab9563793094689aabb2")
+	Delegated        = common.HexToHash("0x24d7bda8602b916d64417f0dbfe2e2e88ec9b1157bd9f596dfdb91ba26624e04")
+	Undelegated      = common.HexToHash("0x3aace7340547de7b9156593a7652dc07ee900cea3fd8f82cb6c9d38b40829802")
+	Redelegated      = common.HexToHash("0xfdac6e81913996d95abcc289e90f2d8bd235487ce6fe6f821e7d21002a1915b4")
+
+	Topics = []common.Hash{ValidatorCreated, ValidatorSlashed, Delegated, Undelegated, Redelegated}
+)
+
 func New(client *ethclient.Client) (*Contract, error) {
 	return NewContract(Address, client)
 }
