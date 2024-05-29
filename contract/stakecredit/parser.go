@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/shopspring/decimal"
 
 	"github.com/bnb-chain/bsc-staking-indexer/model"
 	"github.com/bnb-chain/bsc-staking-indexer/util/log"
@@ -50,9 +51,9 @@ func (_contract *ContractWithInfo) ParseBreathBlockEvents(header *types.Header) 
 	for iterator.Next() {
 		event := iterator.Event
 		events = append(events, &model.BreathBlockRewardEvent{
-			Credit:                _contract.credit,
-			RewardAfterCommission: (*model.Big)(event.RewardToAll),
-			Commission:            (*model.Big)(event.Commission),
+			Credit:                _contract.credit.Hex(),
+			RewardAfterCommission: decimal.NewFromBigInt(event.RewardToAll, 0),
+			Commission:            decimal.NewFromBigInt(event.Commission, 0),
 			Date:                  model.TruncateToDate(time.Unix(int64(header.Time), 0)).Unix(),
 		})
 	}
@@ -82,10 +83,10 @@ func (_contract *ContractWithInfo) ParseValidator(header *types.Header) (*model.
 	}
 
 	return &model.Validator{
-		Operator:              _contract.operator,
-		RewardAfterCommission: (*model.Big)(reward),
-		TotalPooledBNB:        (*model.Big)(bnb),
-		TotalCreditToken:      (*model.Big)(credit),
+		Operator:              _contract.operator.Hex(),
+		RewardAfterCommission: decimal.NewFromBigInt(reward, 0),
+		TotalPooledBNB:        decimal.NewFromBigInt(bnb, 0),
+		TotalCreditToken:      decimal.NewFromBigInt(credit, 0),
 
 		Date: model.TruncateToDate(time.Unix(int64(header.Time), 0).AddDate(0, 0, -1)).Unix(),
 	}, nil
@@ -99,9 +100,9 @@ func (_contract *ContractWithInfo) ParseDelegator(header *types.Header, delegato
 	}
 
 	return &model.Delegator{
-		Delegator: delegator,
-		Operator:  _contract.operator,
-		Amount:    (*model.Big)(amount),
+		Delegator: delegator.Hex(),
+		Operator:  _contract.operator.Hex(),
+		Amount:    decimal.NewFromBigInt(amount, 0),
 
 		Date: model.TruncateToDate(time.Unix(int64(header.Time), 0).AddDate(0, 0, -1)).Unix(),
 	}, nil

@@ -11,6 +11,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/node-real/go-pkg v0.0.6-0.20240423064513-706f2c34df12
+	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0

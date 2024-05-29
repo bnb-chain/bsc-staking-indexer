@@ -93,11 +93,19 @@ func (s *store) SaveBreathBlockRewardEvents(ctx context.Context, events []*model
 }
 
 func (s *store) SaveValidators(ctx context.Context, validators []*model.Validator) error {
+	if len(validators) == 0 {
+		return nil
+	}
+
 	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "operator"}, {Name: "date"}}, UpdateAll: true}).Create(validators).Error
 }
 
 func (s *store) SaveDelegators(ctx context.Context, delegators []*model.Delegator) error {
+	if len(delegators) == 0 {
+		return nil
+	}
+
 	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "delegator"}, {Name: "operator"}, {Name: "date"}}, UpdateAll: true}).
 		Create(delegators).Error
