@@ -7,8 +7,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/shopspring/decimal"
 )
 
 // ValidatorInfo is a model for the validator_info table.
@@ -16,9 +16,9 @@ import (
 type ValidatorInfo struct {
 	ID uint64 `gorm:"column:id;primaryKey"`
 
-	Operator  common.Address `gorm:"column:operator;type:BINARY(20);uniqueIndex:idx_operator"`
-	Consensus common.Address `gorm:"column:consensus;type:BINARY(20)"`
-	Credit    common.Address `gorm:"column:credit;type:BINARY(20)"`
+	Operator  string `gorm:"column:operator;type:CHAR(42);uniqueIndex:idx_operator"`
+	Consensus string `gorm:"column:consensus;type:CHAR(42)"`
+	Credit    string `gorm:"column:credit;type:CHAR(42)"`
 }
 
 func (*ValidatorInfo) TableName() string {
@@ -29,13 +29,13 @@ func (*ValidatorInfo) TableName() string {
 type Validator struct {
 	ID uint64 `gorm:"column:id;primaryKey"`
 
-	Operator common.Address `gorm:"column:operator;type:BINARY(20);uniqueIndex:idx_operator_date"`
+	Operator string `gorm:"column:operator;type:CHAR(42);uniqueIndex:idx_operator_date"`
 	// RewardAfterCommission query StakeCredit rewardRecord at the end of the day
-	RewardAfterCommission *Big `gorm:"column:reward_after_commission;type:VARBINARY(32)"`
+	RewardAfterCommission decimal.Decimal `gorm:"column:reward_after_commission;type:decimal(65,8)"`
 	// TotalPooledBNB query StakeCredit totalPooledBNBRecord at the end of the day
-	TotalPooledBNB *Big `gorm:"column:total_pooled_bnb;type:VARBINARY(32)"`
+	TotalPooledBNB decimal.Decimal `gorm:"column:total_pooled_bnb;type:decimal(65,8)"`
 	// TotalCreditToken query StakeCredit _totalSupply at the previous block of the breathing block
-	TotalCreditToken *Big `gorm:"column:total_credit_token;type:VARBINARY(32)"`
+	TotalCreditToken decimal.Decimal `gorm:"column:total_credit_token;type:decimal(65,8)"`
 
 	Date int64 `gorm:"column:date;uniqueIndex:idx_operator_date"`
 }
@@ -49,10 +49,10 @@ func (*Validator) TableName() string {
 type Delegator struct {
 	ID uint64 `gorm:"column:id;primaryKey"`
 
-	Delegator common.Address `gorm:"column:delegator;type:BINARY(20);uniqueIndex:idx_delegator_operator_date"`
-	Operator  common.Address `gorm:"column:operator;type:BINARY(20);uniqueIndex:idx_delegator_operator_date"`
+	Delegator string `gorm:"column:delegator;type:CHAR(42);uniqueIndex:idx_delegator_operator_date"`
+	Operator  string `gorm:"column:operator;type:CHAR(42);uniqueIndex:idx_delegator_operator_date"`
 	// Amount query stakeCredit getPooledBNB interface at the previous block of the breathing block
-	Amount *Big `gorm:"column:amount;type:VARBINARY(32)"`
+	Amount decimal.Decimal `gorm:"column:amount;type:decimal(65,8)"`
 
 	Date int64 `gorm:"column:date;index:idx_date;uniqueIndex:idx_delegator_operator_date"`
 }
@@ -74,13 +74,13 @@ const (
 type DelegateTx struct {
 	ID uint64 `gorm:"column:id;primaryKey"`
 
-	Delegator   common.Address `gorm:"column:delegator;type:BINARY(20)"`
-	SrcOperator common.Address `gorm:"column:src_operator;type:BINARY(20)"`
-	DstOperator common.Address `gorm:"column:dst_operator;type:BINARY(20)"`
-	Action      DelegateAction `gorm:"column:action"`
-	Amount      *Big           `gorm:"column:amount;type:VARBINARY(32)"`
-	TxHash      common.Hash    `gorm:"column:tx_hash;type:BINARY(32);uniqueIndex:idx_tx_hash"`
-	Timestamp   int64          `gorm:"column:timestamp"`
+	Delegator   string          `gorm:"column:delegator;type:CHAR(42)"`
+	SrcOperator string          `gorm:"column:src_operator;type:CHAR(42)"`
+	DstOperator string          `gorm:"column:dst_operator;type:CHAR(42)"`
+	Action      DelegateAction  `gorm:"column:action;type:VARCHAR(16)"`
+	Amount      decimal.Decimal `gorm:"column:amount;type:decimal(65,8)"`
+	TxHash      string          `gorm:"column:tx_hash;type:CHAR(66);uniqueIndex:idx_tx_hash"`
+	Timestamp   int64           `gorm:"column:timestamp"`
 }
 
 func (*DelegateTx) TableName() string {
@@ -92,9 +92,9 @@ func (*DelegateTx) TableName() string {
 type BreathBlockRewardEvent struct {
 	ID uint64 `gorm:"column:id;primaryKey"`
 
-	Credit                common.Address `gorm:"column:operator;type:BINARY(20);uniqueIndex:idx_credit_date"`
-	RewardAfterCommission *Big           `gorm:"column:reward_after_commission;type:VARBINARY(32)"`
-	Commission            *Big           `gorm:"column:commission;type:VARBINARY(32)"`
+	Credit                string          `gorm:"column:operator;type:CHAR(42);uniqueIndex:idx_credit_date"`
+	RewardAfterCommission decimal.Decimal `gorm:"column:reward_after_commission;type:decimal(65,8)"`
+	Commission            decimal.Decimal `gorm:"column:commission;type:decimal(65,8)"`
 
 	Date int64 `gorm:"column:date;uniqueIndex:idx_credit_date"`
 }
@@ -108,9 +108,9 @@ func (*BreathBlockRewardEvent) TableName() string {
 type SlashEvent struct {
 	ID uint64 `gorm:"column:id;primaryKey"`
 
-	Operator common.Address `gorm:"column:operator;type:BINARY(20);index:idx_operator"`
-	Amount   *Big           `gorm:"column:amount;type:VARBINARY(32)"`
-	TxHash   common.Hash    `gorm:"column:tx_hash;type:BINARY(32);uniqueIndex:idx_tx_hash"`
+	Operator string          `gorm:"column:operator;type:CHAR(42);index:idx_operator"`
+	Amount   decimal.Decimal `gorm:"column:amount;type:decimal(65,8)"`
+	TxHash   string          `gorm:"column:tx_hash;type:CHAR(66);uniqueIndex:idx_tx_hash"`
 
 	Date int64 `gorm:"column:date;index:idx_date"`
 }

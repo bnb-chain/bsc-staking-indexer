@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/node-real/go-pkg/utils/syncutils"
+	"github.com/shopspring/decimal"
 
 	"github.com/bnb-chain/bsc-staking-indexer/model"
 	"github.com/bnb-chain/bsc-staking-indexer/util/log"
@@ -45,9 +46,9 @@ func (_contract *Contract) ParseValidatorInfos(number uint64) ([]*model.Validato
 		event := iterator.Event
 
 		validatorInfos = append(validatorInfos, &model.ValidatorInfo{
-			Operator:  event.OperatorAddress,
-			Consensus: event.ConsensusAddress,
-			Credit:    event.CreditContract,
+			Operator:  event.OperatorAddress.Hex(),
+			Consensus: event.ConsensusAddress.Hex(),
+			Credit:    event.CreditContract.Hex(),
 		})
 	}
 
@@ -112,11 +113,11 @@ func (_contract *Contract) ParseDelegateTxs(header *types.Header, delegator []co
 		event := delegateIterator.Event
 
 		delegateTxs = append(delegateTxs, &model.DelegateTx{
-			Delegator:   event.Delegator,
-			SrcOperator: event.OperatorAddress,
+			Delegator:   event.Delegator.Hex(),
+			SrcOperator: event.OperatorAddress.Hex(),
 			Action:      model.Delegate,
-			Amount:      (*model.Big)(event.BnbAmount),
-			TxHash:      event.Raw.TxHash,
+			Amount:      decimal.NewFromBigInt(event.BnbAmount, 0),
+			TxHash:      event.Raw.TxHash.Hex(),
 			Timestamp:   int64(header.Time),
 		})
 	}
@@ -126,11 +127,11 @@ func (_contract *Contract) ParseDelegateTxs(header *types.Header, delegator []co
 		event := unDelegateIterator.Event
 
 		delegateTxs = append(delegateTxs, &model.DelegateTx{
-			Delegator:   event.Delegator,
-			SrcOperator: event.OperatorAddress,
+			Delegator:   event.Delegator.Hex(),
+			SrcOperator: event.OperatorAddress.Hex(),
 			Action:      model.UnDelegate,
-			Amount:      (*model.Big)(event.BnbAmount),
-			TxHash:      event.Raw.TxHash,
+			Amount:      decimal.NewFromBigInt(event.BnbAmount, 0),
+			TxHash:      event.Raw.TxHash.Hex(),
 			Timestamp:   int64(header.Time),
 		})
 	}
@@ -140,12 +141,12 @@ func (_contract *Contract) ParseDelegateTxs(header *types.Header, delegator []co
 		event := reDelegateIterator.Event
 
 		delegateTxs = append(delegateTxs, &model.DelegateTx{
-			Delegator:   event.Delegator,
-			SrcOperator: event.SrcValidator,
-			DstOperator: event.DstValidator,
+			Delegator:   event.Delegator.Hex(),
+			SrcOperator: event.SrcValidator.Hex(),
+			DstOperator: event.DstValidator.Hex(),
 			Action:      model.ReDelegate,
-			Amount:      (*model.Big)(event.BnbAmount),
-			TxHash:      event.Raw.TxHash,
+			Amount:      decimal.NewFromBigInt(event.BnbAmount, 0),
+			TxHash:      event.Raw.TxHash.Hex(),
 			Timestamp:   int64(header.Time),
 		})
 	}
@@ -170,9 +171,9 @@ func (_contract *Contract) ParseSlashEvents(header *types.Header) ([]*model.Slas
 		event := iterator.Event
 
 		slashEvents = append(slashEvents, &model.SlashEvent{
-			Operator: event.OperatorAddress,
-			Amount:   (*model.Big)(event.SlashAmount),
-			TxHash:   event.Raw.TxHash,
+			Operator: event.OperatorAddress.Hex(),
+			Amount:   decimal.NewFromBigInt(event.SlashAmount, 0),
+			TxHash:   event.Raw.TxHash.Hex(),
 			Date:     model.TruncateToDate(time.Unix(int64(header.Time), 0)).Unix(),
 		})
 	}

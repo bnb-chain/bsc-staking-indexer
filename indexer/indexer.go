@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -45,6 +46,8 @@ var (
 		Timeout:   5 * time.Second,
 		Transport: transport,
 	}
+
+	concurrentRPCCount int64 = 200
 )
 
 type Indexer interface {
@@ -89,12 +92,13 @@ func New(ctx context.Context, cfg Config, store store.Store) (Indexer, error) {
 	stakeCredits := make(map[common.Address]*stakecredit.ContractWithInfo)
 	stakeCreditAddresses := make([]common.Address, 0)
 	for _, v := range validatorInfos {
-		stakeCredits[v.Credit], err = stakecredit.New(v.Operator, v.Credit, client)
+		stakeCredits[common.HexToAddress(v.Credit)], err = stakecredit.New(
+			common.HexToAddress(v.Operator), common.HexToAddress(v.Credit), client)
 		if err != nil {
 			log.Errorw("indexer: failed to new stakecredit", "err", err)
 			return nil, err
 		}
-		stakeCreditAddresses = append(stakeCreditAddresses, v.Credit)
+		stakeCreditAddresses = append(stakeCreditAddresses, common.HexToAddress(v.Credit))
 	}
 
 	return &indexer{
@@ -106,7 +110,20 @@ func New(ctx context.Context, cfg Config, store store.Store) (Indexer, error) {
 		stakeHub:                  stakeHub,
 		stakeCredits:              stakeCredits,
 		stakeCreditAddresses:      stakeCreditAddresses,
+		headers:                   make(chan chan *headerLoadResult, concurrentRPCCount),
 	}, nil
+}
+
+type headerLoadResult struct {
+	header                  *types.Header
+	validatorInfos          []*model.ValidatorInfo
+	delegateTxs             []*model.DelegateTx
+	slashEvents             []*model.SlashEvent
+	breathBlockRewardEvents []*model.BreathBlockRewardEvent
+	validators              []*model.Validator
+	delegators              []*model.Delegator
+
+	err error
 }
 
 type indexer struct {
@@ -118,260 +135,123 @@ type indexer struct {
 	store        store.Store
 	client       *ethclient.Client
 	stakeHub     *stakehub.Contract
+	mu           sync.RWMutex
 	stakeCredits map[common.Address]*stakecredit.ContractWithInfo // credit address -> stake credit
 
 	stakeCreditAddresses []common.Address
+
+	headers chan chan *headerLoadResult
 }
 
 func (i *indexer) Start(ctx context.Context) {
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 
+	go i.index(ctx)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			err := i.index(ctx)
+			err := i.fetchBlockData(ctx)
 			if err != nil {
-				log.Errorw("indexer: failed to indexing", "err", err)
+				log.Panicw("indexer: failed to fetch headers", "err", err)
 			}
 		}
 	}
 }
 
-func (i *indexer) index(ctx context.Context) error {
-	var finalizedHeader *types.Header
-
-	if err := RtyDo(func() error {
-		var er error
-		finalizedHeader, er = i.client.FinalizedHeader(ctx, i.NumberOfBlocksForFinality)
-		return er
-	}); err != nil {
-		log.Errorw("indexer: failed to get finalized header", "err", err)
-		return err
-	}
-
-	for number := i.cursor + 1; number <= finalizedHeader.Number.Int64(); number++ {
-		var header *types.Header
-		if number == finalizedHeader.Number.Int64() {
-			header = finalizedHeader
-		} else {
-			if err := RtyDo(func() error {
-				var er error
-				header, er = i.client.HeaderByNumber(ctx, big.NewInt(number))
-				return er
-			}); err != nil {
-				log.Errorw("indexer: failed to get header by number", "number", number, "err", err)
-				return err
+func (i *indexer) index(ctx context.Context) {
+	for {
+		select {
+		case headerCh, ok := <-i.headers:
+			if !ok {
+				log.Info("indexer: no headers to process")
 			}
-		}
 
-		if i.parentHeader == nil {
-			if err := RtyDo(func() error {
-				var er error
-				i.parentHeader, er = i.client.HeaderByNumber(ctx, big.NewInt(number-1))
-				return er
-			}); err != nil {
-				log.Errorw("indexer: failed to get header by number", "number", number-1, "err", err)
-				return err
+			headerRes := <-headerCh
+			close(headerCh)
+
+			if headerRes.err != nil {
+				log.Panicw("indexer: failed to get header", "err", headerRes.err)
+				return
 			}
-		}
 
-		err := i.handleStakeHubLogs(ctx, header)
-		if err != nil {
-			log.Errorw("indexer: failed to process stakeHub logs", "err", err)
-			return err
-		}
+			header := headerRes.header
+			if header == nil {
+				log.Panicw("indexer: header is nil")
+				return
+			}
 
-		err = i.handleStakeCreditLogs(ctx, header)
-		if err != nil {
-			log.Errorw("indexer: failed to process stakeCredit logs", "err", err)
-			return err
-		}
+			if i.parentHeader == nil {
+				if err := RtyDo(func() error {
+					var er error
+					i.parentHeader, er = i.client.HeaderByNumber(ctx, big.NewInt(header.Number.Int64()-1))
+					return er
+				}); err != nil {
+					log.Panicw("indexer: failed to get header by number", "number", header.Number.Int64()-1, "err", err)
+					return
+				}
+			}
 
-		if isBreatheBlock(i.parentHeader.Time, header.Time) {
-			err = i.handleStakeCreditCalls(ctx, header)
+			err := i.fetchStakeCreditLogsData(headerRes)
 			if err != nil {
-				log.Errorw("indexer: failed to process validator and delegator", "err", err)
-				return err
+				log.Errorw("indexer: failed to fetch stakeCredit data", "err", err)
+				headerRes.err = err
+				headerCh <- headerRes
+				return
 			}
-		}
 
-		err = i.store.SaveCursor(ctx, number)
-		if err != nil {
-			log.Errorw("indexer: failed to save cursor", "number", number, "err", err)
-			return err
-		}
+			if isBreatheBlock(i.parentHeader.Time, header.Time) {
+				err = i.fetchStakeCreditCallData(headerRes)
+				if err != nil {
+					log.Panicw("indexer: failed to process validator and delegator", "err", err)
+					return
+				}
+			}
 
-		i.parentHeader = header
-		i.cursor = number
+			err = i.saveBlockData(ctx, headerRes)
+			for err != nil {
+				err = i.saveBlockData(ctx, headerRes)
+			}
+
+			log.Infow("indexer: processed block", "number", header.Number.Int64(), "hash", header.Hash().Hex())
+			i.parentHeader = header
+
+		case <-time.After(500 * time.Millisecond):
+			log.Info("indexer: no headers to process")
+
+		case <-ctx.Done():
+			return
+		}
 	}
-
-	return nil
 }
 
-// handleStakeHubLogs
-// getLogs for ValidatorInfo, DelegatorTx, SlashEvent
-func (i *indexer) handleStakeHubLogs(ctx context.Context, header *types.Header) error {
-	if !bloomFilter(header.Bloom, []common.Address{stakehub.Address}, [][]common.Hash{stakehub.Topics}) {
-		return nil
-	}
-
-	var (
-		validatorInfos []*model.ValidatorInfo
-		delegateTxs    []*model.DelegateTx
-		slashEvents    []*model.SlashEvent
-	)
-
-	err := syncutils.BatchRun(
-		func() error {
-			var err error
-			validatorInfos, err = i.stakeHub.ParseValidatorInfos(header.Number.Uint64())
-			if err != nil {
-				log.Errorw("indexer: failed to parse validator created", "err", err)
-				return err
-			}
-
-			return nil
-		},
-
-		func() error {
-			var err error
-			delegateTxs, err = i.stakeHub.ParseDelegateTxs(header, i.delegators)
-			if err != nil {
-				log.Errorw("indexer: failed to parse delegated", "err", err)
-				return err
-			}
-
-			return nil
-		},
-
-		func() error {
-			var err error
-			slashEvents, err = i.stakeHub.ParseSlashEvents(header)
-			if err != nil {
-				log.Errorw("indexer: failed to parse slash events", "err", err)
-				return err
-			}
-
-			return nil
-		},
-	)
-
-	if err != nil {
-		log.Errorw("indexer: failed to process stakeHub events", "err", err)
-		return err
-	}
+func (i *indexer) saveBlockData(ctx context.Context, headerRes *headerLoadResult) (err error) {
+	defer recordLatency("saveBlockData", time.Now())
 
 	err = syncutils.BatchRun(
-		func() error { return i.store.SaveValidatorInfos(ctx, validatorInfos) },
-		func() error { return i.store.SaveDelegateTxs(ctx, delegateTxs) },
-		func() error { return i.store.SaveSlashEvents(ctx, slashEvents) },
+		func() error { return i.store.SaveValidatorInfos(ctx, headerRes.validatorInfos) },
+		func() error { return i.store.SaveDelegateTxs(ctx, headerRes.delegateTxs) },
+		func() error { return i.store.SaveSlashEvents(ctx, headerRes.slashEvents) },
+		func() error { return i.store.SaveBreathBlockRewardEvents(ctx, headerRes.breathBlockRewardEvents) },
+		func() error { return i.store.SaveValidators(ctx, headerRes.validators) },
+		func() error { return i.store.SaveDelegators(ctx, headerRes.delegators) },
 	)
 
 	if err != nil {
-		log.Errorw("indexer: failed to save stakeHub logs data", "err", err)
+		log.Errorw("indexer: failed to save block logs data", "number", headerRes.header.Number.Int64(), "err", err)
 		return err
 	}
 
-	for _, v := range validatorInfos {
-		if i.stakeCredits[v.Credit] == nil {
-			credit, err := stakecredit.New(v.Operator, v.Credit, i.client)
-			if err != nil {
-				log.Errorw("indexer: failed to new stakecredit", "err", err)
-			}
-			i.stakeCredits[v.Credit] = credit
-			i.stakeCreditAddresses = append(i.stakeCreditAddresses, v.Credit)
-		}
-	}
-
-	return nil
-}
-
-// handleStakeCreditLogs
-// getLogs for BreathBlockRewardEvent
-func (i *indexer) handleStakeCreditLogs(ctx context.Context, header *types.Header) error {
-	if !bloomFilter(header.Bloom, i.stakeCreditAddresses, [][]common.Hash{stakecredit.Topics}) {
-		return nil
-	}
-
-	var events []*model.BreathBlockRewardEvent
-
-	for _, v := range i.stakeCredits {
-		breatheEvents, err := v.ParseBreathBlockEvents(header)
-		if err != nil {
-			log.Errorw("indexer: failed to parse breath block reward events", "err", err)
-			return err
-		}
-
-		events = append(events, breatheEvents...)
-	}
-
-	err := i.store.SaveBreathBlockRewardEvents(ctx, events)
+	err = i.store.SaveCursor(ctx, headerRes.header.Number.Int64())
 	if err != nil {
-		log.Errorw("indexer: failed to save breath block reward events", "err", err)
+		log.Errorw("indexer: failed to save cursor", "number", headerRes.header.Number.Int64(), "err", err)
 		return err
 	}
 
-	return nil
-}
-
-// handleStakeCreditCalls
-// eth_call for Validator, Delegator
-func (i *indexer) handleStakeCreditCalls(ctx context.Context, header *types.Header) error {
-	var validators []*model.Validator
-	var delegators []*model.Delegator
-
-	for _, v := range i.stakeCredits {
-		validator, err := v.ParseValidator(header)
-		if err != nil {
-			log.Errorw("indexer: failed to parse validator reward", "err", err)
-			return err
-		}
-
-		validators = append(validators, validator)
-
-		for _, d := range i.delegators {
-			delegator, err := v.ParseDelegator(header, d)
-			if err != nil {
-				log.Errorw("indexer: failed to parse delegator reward", "err", err)
-				return err
-			}
-
-			delegators = append(delegators, delegator)
-		}
-	}
-
-	err := syncutils.BatchRun(
-		func() error {
-			var err error
-			err = i.store.SaveValidators(ctx, validators)
-			if err != nil {
-				log.Errorw("indexer: failed to save validators", "err", err)
-				return err
-			}
-
-			return nil
-		},
-
-		func() error {
-			var err error
-			err = i.store.SaveDelegators(ctx, delegators)
-			if err != nil {
-				log.Errorw("indexer: failed to save delegators", "err", err)
-				return err
-			}
-
-			return nil
-		},
-	)
-	if err != nil {
-		log.Errorw("indexer: failed to save stakeCredit calls data", "err", err)
-		return err
-	}
-
-	return nil
+	return
 }
 
 func RtyDo(retryFn func() error) error {
@@ -424,4 +304,8 @@ func bloomFilter(bloom types.Bloom, addresses []common.Address, topics [][]commo
 		}
 	}
 	return true
+}
+
+func recordLatency(method string, start time.Time) {
+	log.Infow("time cost", "method", method, "time", time.Since(start).Milliseconds())
 }
