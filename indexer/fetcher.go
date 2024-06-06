@@ -96,7 +96,7 @@ func (i *indexer) fetchStakeHubLogsData(headerRes *headerLoadResult) error {
 		func() error {
 			err := RtyDo(func() error {
 				var er error
-				validatorInfos, er = i.stakeHub.ParseValidatorInfos(header.Number.Uint64())
+				validatorInfos, er = i.stakeHub.ParseValidatorInfos(header)
 				return er
 			})
 			if err != nil {
@@ -147,11 +147,7 @@ func (i *indexer) fetchStakeHubLogsData(headerRes *headerLoadResult) error {
 func (i *indexer) fetchStakeCreditLogsData(headerRes *headerLoadResult) (err error) {
 	defer recordLatency("fetchStakeCreditLogsData", time.Now())
 	header := headerRes.header
-	if !bloomFilter(header.Bloom, i.stakeCreditAddresses, [][]common.Hash{stakecredit.Topics}) {
-		return nil
-	}
 
-	i.mu.Lock()
 	for _, v := range headerRes.validatorInfos {
 		if i.stakeCredits[common.HexToAddress(v.Credit)] == nil {
 			credit, err := stakecredit.New(common.HexToAddress(v.Operator), common.HexToAddress(v.Credit), i.client)
@@ -162,13 +158,17 @@ func (i *indexer) fetchStakeCreditLogsData(headerRes *headerLoadResult) (err err
 			i.stakeCreditAddresses = append(i.stakeCreditAddresses, common.HexToAddress(v.Credit))
 		}
 	}
-	stakecredits := i.stakeCredits
-	i.mu.Unlock()
 
-	var breathBlockRewardEvents []*model.BreathBlockRewardEvent
+	if !bloomFilter(header.Bloom, i.stakeCreditAddresses, [][]common.Hash{stakecredit.Topics}) {
+		return nil
+	}
 
+	log.Infow("operator sum", "count", len(i.stakeCredits))
+
+	queue := make(chan *model.BreathBlockRewardEvent, len(i.stakeCredits))
 	batchRunner := syncutils.NewBatchRunner()
-	for _, v := range stakecredits {
+	for _, v := range i.stakeCredits {
+		v := v
 		batchRunner.AddTasks(func() error {
 			var breatheEvents []*model.BreathBlockRewardEvent
 			err = RtyDo(func() error {
@@ -181,7 +181,10 @@ func (i *indexer) fetchStakeCreditLogsData(headerRes *headerLoadResult) (err err
 				return err
 			}
 
-			breathBlockRewardEvents = append(breathBlockRewardEvents, breatheEvents...)
+			for _, e := range breatheEvents {
+				queue <- e
+			}
+
 			return nil
 		})
 	}
@@ -191,7 +194,15 @@ func (i *indexer) fetchStakeCreditLogsData(headerRes *headerLoadResult) (err err
 		return err
 	}
 
+	close(queue)
+
+	breathBlockRewardEvents := make([]*model.BreathBlockRewardEvent, 0)
+	for v := range queue {
+		breathBlockRewardEvents = append(breathBlockRewardEvents, v)
+	}
+
 	headerRes.breathBlockRewardEvents = breathBlockRewardEvents
+	log.Infow("breathBlockRewardEvents", "count", len(breathBlockRewardEvents))
 
 	return nil
 }
@@ -205,11 +216,7 @@ func (i *indexer) fetchStakeCreditCallData(headerRes *headerLoadResult) (err err
 	var validators []*model.Validator
 	var delegators []*model.Delegator
 
-	i.mu.RLock()
-	stakecredits := i.stakeCredits
-	i.mu.RUnlock()
-
-	for _, v := range stakecredits {
+	for _, v := range i.stakeCredits {
 		var validator *model.Validator
 		err = RtyDo(func() error {
 			var er error

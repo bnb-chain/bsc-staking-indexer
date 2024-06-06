@@ -7,9 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/node-real/go-pkg/log"
+
 	"github.com/bnb-chain/bsc-staking-indexer/indexer"
 	"github.com/bnb-chain/bsc-staking-indexer/store"
-	"github.com/bnb-chain/bsc-staking-indexer/util/log"
 )
 
 var configPath = flag.String("config", "./configs/config-example.toml", "Give a config file path")

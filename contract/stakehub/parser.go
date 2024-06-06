@@ -7,11 +7,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/node-real/go-pkg/log"
 	"github.com/node-real/go-pkg/utils/syncutils"
 	"github.com/shopspring/decimal"
 
 	"github.com/bnb-chain/bsc-staking-indexer/model"
-	"github.com/bnb-chain/bsc-staking-indexer/util/log"
 )
 
 var Address = common.HexToAddress("0x0000000000000000000000000000000000002002")
@@ -30,7 +30,8 @@ func New(client *ethclient.Client) (*Contract, error) {
 	return NewContract(Address, client)
 }
 
-func (_contract *Contract) ParseValidatorInfos(number uint64) ([]*model.ValidatorInfo, error) {
+func (_contract *Contract) ParseValidatorInfos(header *types.Header) ([]*model.ValidatorInfo, error) {
+	number := header.Number.Uint64()
 	iterator, err := _contract.FilterValidatorCreated(&bind.FilterOpts{Start: number, End: &number},
 		nil, nil, nil)
 
@@ -49,6 +50,8 @@ func (_contract *Contract) ParseValidatorInfos(number uint64) ([]*model.Validato
 			Operator:  event.OperatorAddress.Hex(),
 			Consensus: event.ConsensusAddress.Hex(),
 			Credit:    event.CreditContract.Hex(),
+			Date:      model.TruncateToDate(time.Unix(int64(header.Time), 0)).Unix(),
+			Number:    int64(number),
 		})
 	}
 
@@ -175,6 +178,7 @@ func (_contract *Contract) ParseSlashEvents(header *types.Header) ([]*model.Slas
 			Amount:   decimal.NewFromBigInt(event.SlashAmount, 0),
 			TxHash:   event.Raw.TxHash.Hex(),
 			Date:     model.TruncateToDate(time.Unix(int64(header.Time), 0)).Unix(),
+			Number:   int64(number),
 		})
 	}
 
