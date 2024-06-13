@@ -22,6 +22,9 @@ type Store interface {
 
 	QueryValidatorInfos(ctx context.Context) ([]*model.ValidatorInfo, error)
 	QueryCursor(ctx context.Context) (int64, error)
+
+	QueryBreathBlockRewardEvent(ctx context.Context, operator string, fromDate, toDate int64) ([]*model.BreathBlockRewardEvent, error)
+	QueryDelegator(ctx context.Context, delegator, operator string, fromDate, toDate int64) ([]*model.Delegator, error)
 }
 
 type store struct {
@@ -126,4 +129,21 @@ func (s *store) QueryCursor(ctx context.Context) (int64, error) {
 	}
 
 	return cursor.Number, err
+}
+
+func (s *store) QueryBreathBlockRewardEvent(ctx context.Context, operator string, fromDate, toDate int64) (
+	[]*model.BreathBlockRewardEvent, error) {
+	var events []*model.BreathBlockRewardEvent
+	err := s.db.WithContext(ctx).Model(&model.BreathBlockRewardEvent{}).Where(
+		"operator = ? AND date >= ? AND date < ?", operator, fromDate, toDate).Scan(&events).Error
+	return events, err
+}
+
+func (s *store) QueryDelegator(ctx context.Context, delegator, operator string, fromDate, toDate int64) (
+	[]*model.Delegator, error) {
+	var delegators []*model.Delegator
+	err := s.db.WithContext(ctx).Model(&model.Delegator{}).Where(
+		"delegator = ? AND operator = ? AND date >= ? AND date < ?",
+		delegator, operator, fromDate, toDate).Scan(&delegators).Error
+	return delegators, err
 }
