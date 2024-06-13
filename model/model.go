@@ -19,6 +19,8 @@ type ValidatorInfo struct {
 	Operator  string `gorm:"column:operator;type:CHAR(42);uniqueIndex:idx_operator"`
 	Consensus string `gorm:"column:consensus;type:CHAR(42)"`
 	Credit    string `gorm:"column:credit;type:CHAR(42)"`
+	Date      int64  `gorm:"column:date"`
+	Number    int64  `gorm:"column:number;"`
 }
 
 func (*ValidatorInfo) TableName() string {
@@ -53,8 +55,8 @@ type Delegator struct {
 	Operator  string `gorm:"column:operator;type:CHAR(42);uniqueIndex:idx_delegator_operator_date"`
 	// Amount query stakeCredit getPooledBNB interface at the previous block of the breathing block
 	Amount decimal.Decimal `gorm:"column:amount;type:decimal(65,8)"`
-
-	Date int64 `gorm:"column:date;index:idx_date;uniqueIndex:idx_delegator_operator_date"`
+	Date   int64           `gorm:"column:date;index:idx_date;uniqueIndex:idx_delegator_operator_date"`
+	Number int64           `gorm:"column:number;"`
 }
 
 func (*Delegator) TableName() string {
@@ -92,11 +94,11 @@ func (*DelegateTx) TableName() string {
 type BreathBlockRewardEvent struct {
 	ID uint64 `gorm:"column:id;primaryKey"`
 
-	Credit                string          `gorm:"column:operator;type:CHAR(42);uniqueIndex:idx_credit_date"`
+	Operator              string          `gorm:"column:operator;type:CHAR(42);uniqueIndex:idx_operator_date"`
 	RewardAfterCommission decimal.Decimal `gorm:"column:reward_after_commission;type:decimal(65,8)"`
 	Commission            decimal.Decimal `gorm:"column:commission;type:decimal(65,8)"`
-
-	Date int64 `gorm:"column:date;uniqueIndex:idx_credit_date"`
+	Date                  int64           `gorm:"column:date;uniqueIndex:idx_operator_date"`
+	Number                int64           `gorm:"column:number;"`
 }
 
 func (*BreathBlockRewardEvent) TableName() string {
@@ -111,8 +113,8 @@ type SlashEvent struct {
 	Operator string          `gorm:"column:operator;type:CHAR(42);index:idx_operator"`
 	Amount   decimal.Decimal `gorm:"column:amount;type:decimal(65,8)"`
 	TxHash   string          `gorm:"column:tx_hash;type:CHAR(66);uniqueIndex:idx_tx_hash"`
-
-	Date int64 `gorm:"column:date;index:idx_date"`
+	Date     int64           `gorm:"column:date;index:idx_date"`
+	Number   int64           `gorm:"column:number;"`
 }
 
 func (*SlashEvent) TableName() string {

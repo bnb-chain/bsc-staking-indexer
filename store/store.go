@@ -61,8 +61,7 @@ func (s *store) SaveValidatorInfos(ctx context.Context, infos []*model.Validator
 		return nil
 	}
 
-	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "operator"}}, DoNothing: true}).Create(infos).Error
+	return s.db.WithContext(ctx).Clauses(clause.Insert{Modifier: "IGNORE"}).Create(infos).Error
 }
 
 func (s *store) SaveDelegateTxs(ctx context.Context, txs []*model.DelegateTx) error {
@@ -70,8 +69,7 @@ func (s *store) SaveDelegateTxs(ctx context.Context, txs []*model.DelegateTx) er
 		return nil
 	}
 
-	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "idx_tx_hash"}}, DoNothing: true}).Create(txs).Error
+	return s.db.WithContext(ctx).Clauses(clause.Insert{Modifier: "IGNORE"}).Create(txs).Error
 }
 
 func (s *store) SaveSlashEvents(ctx context.Context, events []*model.SlashEvent) error {
@@ -79,8 +77,7 @@ func (s *store) SaveSlashEvents(ctx context.Context, events []*model.SlashEvent)
 		return nil
 	}
 
-	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "idx_tx_hash"}}, DoNothing: true}).Create(events).Error
+	return s.db.WithContext(ctx).Clauses(clause.Insert{Modifier: "IGNORE"}).Create(events).Error
 }
 
 func (s *store) SaveBreathBlockRewardEvents(ctx context.Context, events []*model.BreathBlockRewardEvent) error {
@@ -88,8 +85,7 @@ func (s *store) SaveBreathBlockRewardEvents(ctx context.Context, events []*model
 		return nil
 	}
 
-	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "credit"}, {Name: "date"}}, DoNothing: true}).Create(events).Error
+	return s.db.WithContext(ctx).Clauses(clause.Insert{Modifier: "IGNORE"}).Create(events).Error
 }
 
 func (s *store) SaveValidators(ctx context.Context, validators []*model.Validator) error {
@@ -97,8 +93,7 @@ func (s *store) SaveValidators(ctx context.Context, validators []*model.Validato
 		return nil
 	}
 
-	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "operator"}, {Name: "date"}}, UpdateAll: true}).Create(validators).Error
+	return s.db.WithContext(ctx).Clauses(clause.Insert{Modifier: "IGNORE"}).Create(validators).Error
 }
 
 func (s *store) SaveDelegators(ctx context.Context, delegators []*model.Delegator) error {
@@ -106,9 +101,7 @@ func (s *store) SaveDelegators(ctx context.Context, delegators []*model.Delegato
 		return nil
 	}
 
-	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "delegator"}, {Name: "operator"}, {Name: "date"}}, UpdateAll: true}).
-		Create(delegators).Error
+	return s.db.WithContext(ctx).Clauses(clause.Insert{Modifier: "IGNORE"}).Create(delegators).Error
 }
 
 func (s *store) SaveCursor(ctx context.Context, number int64) error {

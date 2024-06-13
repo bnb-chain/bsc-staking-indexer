@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -15,12 +14,12 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/node-real/go-pkg/log"
 
 	"github.com/bnb-chain/bsc-staking-indexer/contract/stakecredit"
 	"github.com/bnb-chain/bsc-staking-indexer/contract/stakehub"
 	"github.com/bnb-chain/bsc-staking-indexer/model"
 	"github.com/bnb-chain/bsc-staking-indexer/store"
-	"github.com/bnb-chain/bsc-staking-indexer/util/log"
 )
 
 var (
@@ -135,7 +134,6 @@ type indexer struct {
 	store        store.Store
 	client       *ethclient.Client
 	stakeHub     *stakehub.Contract
-	mu           sync.RWMutex
 	stakeCredits map[common.Address]*stakecredit.ContractWithInfo // credit address -> stake credit
 
 	stakeCreditAddresses []common.Address
@@ -167,7 +165,7 @@ func (i *indexer) index(ctx context.Context) {
 		select {
 		case headerCh, ok := <-i.headers:
 			if !ok {
-				log.Info("indexer: no headers to process")
+				log.Info("indexer: headers chan closed")
 			}
 
 			headerRes := <-headerCh
@@ -223,6 +221,7 @@ func (i *indexer) index(ctx context.Context) {
 			log.Info("indexer: no headers to process")
 
 		case <-ctx.Done():
+			log.Info("indexer: context done")
 			return
 		}
 	}

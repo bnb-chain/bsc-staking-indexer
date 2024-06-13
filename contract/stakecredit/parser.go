@@ -8,10 +8,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/node-real/go-pkg/log"
 	"github.com/shopspring/decimal"
 
 	"github.com/bnb-chain/bsc-staking-indexer/model"
-	"github.com/bnb-chain/bsc-staking-indexer/util/log"
 )
 
 const BreatheBlockInterval = 86400
@@ -51,10 +51,11 @@ func (_contract *ContractWithInfo) ParseBreathBlockEvents(header *types.Header) 
 	for iterator.Next() {
 		event := iterator.Event
 		events = append(events, &model.BreathBlockRewardEvent{
-			Credit:                _contract.credit.Hex(),
+			Operator:              _contract.operator.Hex(),
 			RewardAfterCommission: decimal.NewFromBigInt(event.RewardToAll, 0),
 			Commission:            decimal.NewFromBigInt(event.Commission, 0),
 			Date:                  model.TruncateToDate(time.Unix(int64(header.Time), 0)).Unix(),
+			Number:                int64(number),
 		})
 	}
 
@@ -103,7 +104,7 @@ func (_contract *ContractWithInfo) ParseDelegator(header *types.Header, delegato
 		Delegator: delegator.Hex(),
 		Operator:  _contract.operator.Hex(),
 		Amount:    decimal.NewFromBigInt(amount, 0),
-
-		Date: model.TruncateToDate(time.Unix(int64(header.Time), 0).AddDate(0, 0, -1)).Unix(),
+		Date:      model.TruncateToDate(time.Unix(int64(header.Time), 0).AddDate(0, 0, -1)).Unix(),
+		Number:    header.Number.Int64() - 1,
 	}, nil
 }
