@@ -9,6 +9,7 @@ import (
 
 	"github.com/node-real/go-pkg/log"
 
+	"github.com/bnb-chain/bsc-staking-indexer/cc"
 	"github.com/bnb-chain/bsc-staking-indexer/indexer"
 	"github.com/bnb-chain/bsc-staking-indexer/store"
 )
@@ -40,6 +41,9 @@ func main() {
 	}
 
 	go i.Start(ctx)
+
+	reporter := cc.New(cfg.CC, st)
+	reporter.Start()
 
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)

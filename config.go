@@ -10,12 +10,14 @@ import (
 	"github.com/naoina/toml"
 	"github.com/node-real/go-pkg/mysqlclient"
 
+	"github.com/bnb-chain/bsc-staking-indexer/cc"
 	"github.com/bnb-chain/bsc-staking-indexer/indexer"
 )
 
 type Config struct {
 	Indexer indexer.Config
 	Store   mysqlclient.Config
+	CC      cc.Config
 
 	Log LogConfig
 }
