@@ -24,7 +24,7 @@ type Store interface {
 	QueryCursor(ctx context.Context) (int64, error)
 
 	QueryBreathBlockRewardEvent(ctx context.Context, operator string, fromDate, toDate int64) ([]*model.BreathBlockRewardEvent, error)
-	QueryDelegator(ctx context.Context, delegator, operator string, fromDate, toDate int64) ([]*model.Delegator, error)
+	QueryDelegator(ctx context.Context, delegator, operator string, startDateOfNextMonth int64) (*model.Delegator, error)
 }
 
 type store struct {
@@ -139,11 +139,11 @@ func (s *store) QueryBreathBlockRewardEvent(ctx context.Context, operator string
 	return events, err
 }
 
-func (s *store) QueryDelegator(ctx context.Context, delegator, operator string, fromDate, toDate int64) (
-	[]*model.Delegator, error) {
-	var delegators []*model.Delegator
+func (s *store) QueryDelegator(ctx context.Context, delegator, operator string, startDateOfNextMonth int64) (
+	*model.Delegator, error) {
+	var res *model.Delegator
 	err := s.db.WithContext(ctx).Model(&model.Delegator{}).Where(
-		"delegator = ? AND operator = ? AND date >= ? AND date < ?",
-		delegator, operator, fromDate, toDate).Scan(&delegators).Error
-	return delegators, err
+		"delegator = ? AND operator = ? AND date < ?",
+		delegator, operator, startDateOfNextMonth).Order("date desc").Limit(1).Find(&res).Error
+	return res, err
 }

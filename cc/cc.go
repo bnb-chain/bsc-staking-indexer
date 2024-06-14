@@ -38,6 +38,8 @@ func New(cfg Config, store store.Store) *CC {
 		log.Debugw("error while setting up scheduler", "err", err)
 	}
 
+	cc.ComputeAndSend()
+
 	return cc
 }
 
@@ -55,44 +57,62 @@ func (c *CC) ComputeAndSend() {
 	)
 
 	if month == 1 {
-		from = time.Date(year-1, 12, 0, 0, 0, 0, 0, time.UTC)
+		from = time.Date(year-1, 12, 1, 0, 0, 0, 0, time.UTC)
 	} else {
-		from = time.Date(year, month-1, 0, 0, 0, 0, 0, time.UTC)
+		from = time.Date(year, month-1, 1, 0, 0, 0, 0, time.UTC)
 	}
 
-	to = time.Date(year, month, 0, 0, 0, 0, 0, time.UTC)
+	to = time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
 
 	var (
 		commissionReward     = decimal.Zero
 		selfDelegationReward = decimal.Zero
 	)
 
+	// commission reward
 	commissions, err := c.store.QueryBreathBlockRewardEvent(ctx, c.cfg.NodeRealOperator.Hex(), from.Unix(), to.Unix())
 	if err != nil {
 		log.Errorw("[cc] query commission error", "err", err)
+		return
 	}
 	for _, commission := range commissions {
 		commissionReward = commissionReward.Add(commission.Commission)
 	}
 	commissionReward = commissionReward.Div(decimal.NewFromInt(1e18))
 
-	selfDelegations, err := c.store.QueryDelegator(ctx, c.cfg.NodeRealOperator.Hex(),
-		c.cfg.NodeRealOperator.Hex(), from.Unix(), to.Unix())
+	// self delegation reward of operator
+	lastMonth, err := c.store.QueryDelegator(ctx, c.cfg.NodeRealOperator.Hex(),
+		c.cfg.NodeRealOperator.Hex(), from.Unix())
 	if err != nil {
 		log.Errorw("[cc] query self delegation error", "err", err)
-	}
-	for _, selfDelegation := range selfDelegations {
-		selfDelegationReward = selfDelegationReward.Add(selfDelegation.Amount)
+		return
 	}
 
-	selfDelegations, err = c.store.QueryDelegator(ctx, c.cfg.NodeRealSelfDelegation.Hex(),
-		c.cfg.NodeRealOperator.Hex(), from.Unix(), to.Unix())
+	thisMonth, err := c.store.QueryDelegator(ctx, c.cfg.NodeRealOperator.Hex(),
+		c.cfg.NodeRealOperator.Hex(), to.Unix())
 	if err != nil {
 		log.Errorw("[cc] query self delegation error", "err", err)
+		return
 	}
-	for _, selfDelegation := range selfDelegations {
-		selfDelegationReward = selfDelegationReward.Add(selfDelegation.Amount)
+
+	selfDelegationReward = thisMonth.Amount.Sub(lastMonth.Amount)
+
+	// self delegation reward of delegator
+	lastMonth, err = c.store.QueryDelegator(ctx, c.cfg.NodeRealSelfDelegation.Hex(),
+		c.cfg.NodeRealOperator.Hex(), from.Unix())
+	if err != nil {
+		log.Errorw("[cc] query self delegation error", "err", err)
+		return
 	}
+
+	thisMonth, err = c.store.QueryDelegator(ctx, c.cfg.NodeRealSelfDelegation.Hex(),
+		c.cfg.NodeRealOperator.Hex(), to.Unix())
+	if err != nil {
+		log.Errorw("[cc] query self delegation error", "err", err)
+		return
+	}
+
+	selfDelegationReward = selfDelegationReward.Add(thisMonth.Amount.Sub(lastMonth.Amount))
 	selfDelegationReward = selfDelegationReward.Div(decimal.NewFromInt(1e18))
 
 	msg := "Staking reward during " + strconv.Itoa(year) + "-" + from.Month().String() + ". \n" +

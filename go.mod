@@ -8,13 +8,11 @@ require (
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/bnb-chain/bsc-mev-sentry v1.0.6
 	github.com/ethereum/go-ethereum v1.14.3
+	github.com/go-co-op/gocron v1.37.0
 	github.com/json-iterator/go v1.1.12
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/node-real/go-pkg v0.0.6-0.20240423064513-706f2c34df12
 	github.com/shopspring/decimal v1.4.0
-	github.com/stretchr/testify v1.9.0
-	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.27.0
 	gorm.io/gorm v1.25.10
 )
 
@@ -98,7 +96,6 @@ require (
 	github.com/panjf2000/ants/v2 v2.4.5 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.18.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/common v0.47.0 // indirect
@@ -111,6 +108,7 @@ require (
 	github.com/prysmaticlabs/prysm/v5 v5.0.3 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -135,6 +133,9 @@ require (
 	go.opentelemetry.io/otel v1.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
 	golang.org/x/mod v0.15.0 // indirect
@@ -147,7 +148,6 @@ require (
 	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.6 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
