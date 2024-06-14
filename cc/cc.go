@@ -17,7 +17,7 @@ import (
 	"github.com/bnb-chain/bsc-staking-indexer/store"
 )
 
-const url = "https://ccalernow.bk.nodereal.cc/sendalerts"
+const url = "https://ccalert.bk.nodereal.cc/sendalerts"
 
 type CC struct {
 	cfg       Config
@@ -114,6 +114,7 @@ func (c *CC) ComputeAndSend() {
 
 	selfDelegationReward = selfDelegationReward.Add(thisMonth.Amount.Sub(lastMonth.Amount))
 	selfDelegationReward = selfDelegationReward.Div(decimal.NewFromInt(1e18))
+	selfDelegationReward = selfDelegationReward.Sub(commissionReward)
 
 	msg := "Staking reward during " + strconv.Itoa(year) + "-" + from.Month().String() + ". \n" +
 		"NodeReal commission reward: " + commissionReward.String() + "\n" +
