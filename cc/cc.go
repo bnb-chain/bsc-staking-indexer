@@ -38,8 +38,6 @@ func New(cfg Config, store store.Store) *CC {
 		log.Debugw("error while setting up scheduler", "err", err)
 	}
 
-	cc.ComputeAndSend()
-
 	return cc
 }
 
