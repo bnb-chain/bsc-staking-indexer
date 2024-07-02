@@ -32,7 +32,7 @@ func New(cfg Config, store store.Store) *CC {
 		scheduler: gocron.NewScheduler(time.UTC),
 	}
 
-	if _, err := cc.scheduler.Month(1).Do(func() {
+	if _, err := cc.scheduler.Every(1).Month(1).At("10:00").Do(func() {
 		cc.ComputeAndSend()
 	}); err != nil {
 		log.Debugw("error while setting up scheduler", "err", err)

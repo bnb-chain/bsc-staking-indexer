@@ -154,7 +154,7 @@ func (i *indexer) Start(ctx context.Context) {
 		case <-ticker.C:
 			err := i.fetchBlockData(ctx)
 			if err != nil {
-				log.Panicw("indexer: failed to fetch headers", "err", err)
+				log.Errorw("indexer: failed to fetch headers", "err", err)
 			}
 		}
 	}
