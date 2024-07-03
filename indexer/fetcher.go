@@ -89,7 +89,6 @@ func (i *indexer) fetchStakeHubLogsData(headerRes *headerLoadResult) error {
 	}
 
 	var validatorInfos []*model.ValidatorInfo
-	var delegateTxs []*model.DelegateTx
 	var slashEvents []*model.SlashEvent
 
 	err := syncutils.BatchRun(
@@ -101,18 +100,6 @@ func (i *indexer) fetchStakeHubLogsData(headerRes *headerLoadResult) error {
 			})
 			if err != nil {
 				log.Errorw("indexer: failed to parse validator created", "err", err)
-				return err
-			}
-			return nil
-		},
-		func() error {
-			err := RtyDo(func() error {
-				var er error
-				delegateTxs, er = i.stakeHub.ParseDelegateTxs(header, i.delegators)
-				return er
-			})
-			if err != nil {
-				log.Errorw("indexer: failed to parse delegated", "err", err)
 				return err
 			}
 			return nil
@@ -133,6 +120,23 @@ func (i *indexer) fetchStakeHubLogsData(headerRes *headerLoadResult) error {
 
 	if err != nil {
 		log.Errorw("indexer: failed to fetch stakeHub data", "err", err)
+		return err
+	}
+
+	delegators := make([]common.Address, 0)
+
+	i.mu.Lock()
+	for _, v := range validatorInfos {
+		i.delegators[common.HexToAddress(v.Operator)] = true
+	}
+	for k := range i.delegators {
+		delegators = append(delegators, k)
+	}
+	i.mu.Unlock()
+
+	delegateTxs, er := i.stakeHub.ParseDelegateTxs(header, delegators)
+	if er != nil {
+		log.Errorw("indexer: failed to parse delegated", "err", err)
 		return err
 	}
 
@@ -216,6 +220,13 @@ func (i *indexer) fetchStakeCreditCallData(headerRes *headerLoadResult) (err err
 	var validators []*model.Validator
 	var delegators []*model.Delegator
 
+	delegator := make([]common.Address, 0)
+	i.mu.RLock()
+	for k := range i.delegators {
+		delegator = append(delegator, k)
+	}
+	i.mu.RUnlock()
+
 	for _, v := range i.stakeCredits {
 		var validator *model.Validator
 		err = RtyDo(func() error {
@@ -230,7 +241,7 @@ func (i *indexer) fetchStakeCreditCallData(headerRes *headerLoadResult) (err err
 
 		validators = append(validators, validator)
 
-		for _, d := range i.delegators {
+		for _, d := range delegator {
 			var delegator *model.Delegator
 			err = RtyDo(func() error {
 				var er error

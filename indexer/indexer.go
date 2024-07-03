@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -88,6 +89,7 @@ func New(ctx context.Context, cfg Config, store store.Store) (Indexer, error) {
 		return nil, err
 	}
 
+	delegators := make(map[common.Address]bool)
 	stakeCredits := make(map[common.Address]*stakecredit.ContractWithInfo)
 	stakeCreditAddresses := make([]common.Address, 0)
 	for _, v := range validatorInfos {
@@ -98,12 +100,17 @@ func New(ctx context.Context, cfg Config, store store.Store) (Indexer, error) {
 			return nil, err
 		}
 		stakeCreditAddresses = append(stakeCreditAddresses, common.HexToAddress(v.Credit))
+		delegators[common.HexToAddress(v.Operator)] = true
+	}
+
+	for _, v := range cfg.Delegators {
+		delegators[v] = true
 	}
 
 	return &indexer{
 		cursor:                    cursor,
 		NumberOfBlocksForFinality: cfg.NumberOfBlocksForFinality,
-		delegators:                cfg.Delegators,
+		delegators:                delegators,
 		store:                     store,
 		client:                    client,
 		stakeHub:                  stakeHub,
@@ -128,7 +135,8 @@ type headerLoadResult struct {
 type indexer struct {
 	cursor                    int64
 	NumberOfBlocksForFinality int64
-	delegators                []common.Address
+	mu                        sync.RWMutex
+	delegators                map[common.Address]bool
 	parentHeader              *types.Header
 
 	store        store.Store
