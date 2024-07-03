@@ -221,11 +221,11 @@ func (i *indexer) fetchStakeCreditCallData(headerRes *headerLoadResult) (err err
 	var delegators []*model.Delegator
 
 	delegator := make([]common.Address, 0)
-	i.mu.Lock()
+	i.mu.RLock()
 	for k := range i.delegators {
 		delegator = append(delegator, k)
 	}
-	i.mu.Unlock()
+	i.mu.RUnlock()
 
 	for _, v := range i.stakeCredits {
 		var validator *model.Validator
