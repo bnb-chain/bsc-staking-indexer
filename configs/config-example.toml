@@ -1,0 +1,13 @@
+[Indexer]
+RPCURL = "https://bsc-dataseed3.bnbchain.org"
+StartBlockNumber = 38843671
+NumberOfBlocksForFinality = 5
+Delegators = ["0x773760b0708a5Cc369c346993a0c225D8e4043B1"]
+
+[Store]
+DSN = "root:rootadmin@tcp(127.0.0.1:3306)/staking?charset=utf8&parseTime=True&loc=Local&timeout=10s&readTimeout=30s&writeTimeout=60s"
+
+[Log]
+RootDir = "./logs/"
+Level = "Info"
+
