@@ -5,9 +5,10 @@ on:
     # Publish `v1.2.3` tags as releases.
     tags:
       - v*
+  workflow_dispatch:
 
 env:
-  IMAGE_NAME: bsc-mev-sentry
+  IMAGE_NAME: bsc-staking-indexer
 
 jobs:
   # Push image to GitHub Packages.
@@ -21,7 +22,6 @@ jobs:
       - name: Build image
         run: |
             docker build . \
-            --build-arg GIT_TOKEN=${{secrets.GIT_TOKEN}} \
             --label "org.opencontainers.image.source=${{ secrets.IMAGE_SOURCE }}" \
             --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
             --label "org.opencontainers.image.version=$(git describe --tags --abbrev=0)" \
@@ -42,7 +42,7 @@ jobs:
           # Strip "v" prefix from tag name
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
           # Use Docker `latest` tag convention
-          [ "$VERSION" == "master" ] && VERSION=latest
+          [ "$VERSION" == "main" ] && VERSION=latest
           echo IMAGE_ID=$IMAGE_ID
           echo VERSION=$VERSION
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
