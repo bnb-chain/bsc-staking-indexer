@@ -150,7 +150,7 @@ type indexer struct {
 }
 
 func (i *indexer) Start(ctx context.Context) {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(1500 * time.Millisecond)
 	defer ticker.Stop()
 
 	go i.index(ctx)
