@@ -19,12 +19,10 @@ RUN echo "${GIT_TOKEN_URL}" > ~/.git-credentials \
 RUN go mod tidy
 RUN go build -o .build/staking-indexer ./
 
-RUN rm -f ~/.git-credentials
-RUN apk del build-base linux-headers eudev-dev
 
 FROM public.ecr.aws/docker/library/alpine:latest
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache build-base bash vim curl busybox-extras
 
 WORKDIR /opt/app
 
