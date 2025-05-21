@@ -19,6 +19,19 @@ import (
 
 const url = "https://ccalert.bk.nodereal.cc/sendalerts"
 
+// OperatorRewardConfig holds configuration for a single operator whose rewards are to be calculated.
+type OperatorRewardConfig struct {
+	OperatorAddress       common.Address // The address of the validator operator.
+	SelfDelegationAddress common.Address // A specific delegator address whose rewards on this OperatorAddress should be included (e.g., an address controlled by the operator). Can be zero if not applicable.
+	OperatorName          string         // A human-readable name for the operator (e.g., "NodeReal", "OperatorX").
+}
+
+// Config now holds a list of operators to process and the CC group ID.
+type Config struct {
+	Operators []OperatorRewardConfig // List of operator configurations.
+	CCGroupID string
+}
+
 type CC struct {
 	cfg       Config
 	store     store.Store
@@ -43,6 +56,8 @@ func New(cfg Config, store store.Store) *CC {
 
 func (c *CC) Start() {
 	c.scheduler.StartAsync()
+	// print when start
+	go c.ComputeAndSend()
 }
 
 func (c *CC) ComputeAndSend() {
@@ -59,74 +74,87 @@ func (c *CC) ComputeAndSend() {
 	} else {
 		from = time.Date(year, month-1, 1, 0, 0, 0, 0, time.UTC)
 	}
-
 	to = time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
 
-	var (
-		commissionReward     = decimal.Zero
-		selfDelegationReward = decimal.Zero
-	)
+	log.Infow("[cc] Starting reward computation for period", "from", from, "to", to, "operators_count", len(c.cfg.Operators))
 
-	// commission reward
-	commissions, err := c.store.QueryBreathBlockRewardEvent(ctx, c.cfg.NodeRealOperator.Hex(), from.Unix(), to.Unix())
-	if err != nil {
-		log.Errorw("[cc] query commission error", "err", err)
-		return
+	for _, opCfg := range c.cfg.Operators {
+		log.Infow("[cc] Processing operator", "name", opCfg.OperatorName, "address", opCfg.OperatorAddress.Hex())
+
+		// 1. Calculate commission reward for the current operator
+		opCommissionWei := decimal.Zero
+		commissions, err := c.store.QueryBreathBlockRewardEvent(ctx, opCfg.OperatorAddress.Hex(), from.Unix(), to.Unix())
+		if err != nil {
+			log.Errorw("[cc] Failed to query commission events", "operator_name", opCfg.OperatorName, "operator_address", opCfg.OperatorAddress.Hex(), "err", err)
+			continue // Skip to the next operator
+		}
+		for _, commission := range commissions {
+			opCommissionWei = opCommissionWei.Add(commission.Commission)
+		}
+		// This is the commission amount to be reported and used in subtraction
+		opCommissionEthForReport := opCommissionWei.Div(decimal.NewFromInt(1e18))
+
+		// 2. Calculate total stake increase (operator's own + specific self-delegator's)
+		totalStakeIncreaseWei := decimal.Zero
+
+		// 2a. Operator's own self-delegation reward
+		lastMonthOperatorStake, err := c.store.QueryDelegator(ctx, opCfg.OperatorAddress.Hex(),
+			opCfg.OperatorAddress.Hex(), from.Unix())
+		if err != nil {
+			log.Errorw("[cc] Failed to query operator's own last month stake", "operator_name", opCfg.OperatorName, "delegator_address", opCfg.OperatorAddress.Hex(), "validator_address", opCfg.OperatorAddress.Hex(), "err", err)
+			continue // Skip to the next operator
+		}
+		thisMonthOperatorStake, err := c.store.QueryDelegator(ctx, opCfg.OperatorAddress.Hex(),
+			opCfg.OperatorAddress.Hex(), to.Unix())
+		if err != nil {
+			log.Errorw("[cc] Failed to query operator's own this month stake", "operator_name", opCfg.OperatorName, "delegator_address", opCfg.OperatorAddress.Hex(), "validator_address", opCfg.OperatorAddress.Hex(), "err", err)
+			continue // Skip to the next operator
+		}
+		operatorOwnStakeIncrease := thisMonthOperatorStake.Amount.Sub(lastMonthOperatorStake.Amount)
+		totalStakeIncreaseWei = totalStakeIncreaseWei.Add(operatorOwnStakeIncrease)
+
+		// 2b. Reward from the specific "self-delegation" address, if configured
+		if opCfg.SelfDelegationAddress != (common.Address{}) { // Check if a specific self-delegation address is provided
+			lastMonthSpecialDelegatorStake, err := c.store.QueryDelegator(ctx, opCfg.SelfDelegationAddress.Hex(),
+				opCfg.OperatorAddress.Hex(), from.Unix())
+			if err != nil {
+				// Log error but continue, as this part might be optional or fail independently
+				log.Errorw("[cc] Failed to query special delegator's last month stake", "operator_name", opCfg.OperatorName, "delegator_address", opCfg.SelfDelegationAddress.Hex(), "validator_address", opCfg.OperatorAddress.Hex(), "err", err)
+			} else {
+				thisMonthSpecialDelegatorStake, err := c.store.QueryDelegator(ctx, opCfg.SelfDelegationAddress.Hex(),
+					opCfg.OperatorAddress.Hex(), to.Unix())
+				if err != nil {
+					log.Errorw("[cc] Failed to query special delegator's this month stake", "operator_name", opCfg.OperatorName, "delegator_address", opCfg.SelfDelegationAddress.Hex(), "validator_address", opCfg.OperatorAddress.Hex(), "err", err)
+				} else {
+					specialDelegatorStakeIncrease := thisMonthSpecialDelegatorStake.Amount.Sub(lastMonthSpecialDelegatorStake.Amount)
+					totalStakeIncreaseWei = totalStakeIncreaseWei.Add(specialDelegatorStakeIncrease)
+				}
+			}
+		}
+
+		totalStakeIncreaseEth := totalStakeIncreaseWei.Div(decimal.NewFromInt(1e18))
+
+		// This calculation mirrors the original logic for "Self-delegation reward"
+		finalSelfDelegationRewardForReport := totalStakeIncreaseEth.Sub(opCommissionEthForReport)
+
+		msg := opCfg.OperatorName + " staking reward during " + strconv.Itoa(year) + "-" + from.Month().String() + ". \n" +
+			opCfg.OperatorName + " commission reward: " + opCommissionEthForReport.String() + "\n" +
+			opCfg.OperatorName + " Self-delegation reward: " + finalSelfDelegationRewardForReport.String()
+
+		log.Infow("[cc] Sending CC message for operator", "operator_name", opCfg.OperatorName, "commission_reward", opCommissionEthForReport.String(), "self_delegation_reward", finalSelfDelegationRewardForReport.String())
+		SendCCMessage(c.cfg.CCGroupID, msg)
 	}
-	for _, commission := range commissions {
-		commissionReward = commissionReward.Add(commission.Commission)
-	}
-	commissionReward = commissionReward.Div(decimal.NewFromInt(1e18))
-
-	// self delegation reward of operator
-	lastMonth, err := c.store.QueryDelegator(ctx, c.cfg.NodeRealOperator.Hex(),
-		c.cfg.NodeRealOperator.Hex(), from.Unix())
-	if err != nil {
-		log.Errorw("[cc] query self delegation error", "err", err)
-		return
-	}
-
-	thisMonth, err := c.store.QueryDelegator(ctx, c.cfg.NodeRealOperator.Hex(),
-		c.cfg.NodeRealOperator.Hex(), to.Unix())
-	if err != nil {
-		log.Errorw("[cc] query self delegation error", "err", err)
-		return
-	}
-
-	selfDelegationReward = thisMonth.Amount.Sub(lastMonth.Amount)
-
-	// self delegation reward of delegator
-	lastMonth, err = c.store.QueryDelegator(ctx, c.cfg.NodeRealSelfDelegation.Hex(),
-		c.cfg.NodeRealOperator.Hex(), from.Unix())
-	if err != nil {
-		log.Errorw("[cc] query self delegation error", "err", err)
-		return
-	}
-
-	thisMonth, err = c.store.QueryDelegator(ctx, c.cfg.NodeRealSelfDelegation.Hex(),
-		c.cfg.NodeRealOperator.Hex(), to.Unix())
-	if err != nil {
-		log.Errorw("[cc] query self delegation error", "err", err)
-		return
-	}
-
-	selfDelegationReward = selfDelegationReward.Add(thisMonth.Amount.Sub(lastMonth.Amount))
-	selfDelegationReward = selfDelegationReward.Div(decimal.NewFromInt(1e18))
-	selfDelegationReward = selfDelegationReward.Sub(commissionReward)
-
-	msg := "Staking reward during " + strconv.Itoa(year) + "-" + from.Month().String() + ". \n" +
-		"NodeReal commission reward: " + commissionReward.String() + "\n" +
-		"NodeReal Self-delegation reward: " + selfDelegationReward.String()
-
-	SendCCMessage(c.cfg.CCGroupID, msg)
+	log.Info("[cc] Finished reward computation cycle.")
 }
 
+/*
 type Config struct {
 	NodeRealOperator       common.Address
 	NodeRealSelfDelegation common.Address
 
 	CCGroupID string
 }
+*/
 
 type Payload struct {
 	GroupID string `json:"groupID"`
@@ -162,7 +190,7 @@ func SendCCMessage(groupID string, msg string) {
 	}
 
 	defer resp.Body.Close()
-	response, _ := ioutil.ReadAll(resp.Body)
+	response, _ := ioutil.ReadAll(resp.Body) // Error from ReadAll is ignored in original, kept same.
 
 	log.Infof("[cc] send message success, message=%s, res=%s", msg, string(response))
 }
