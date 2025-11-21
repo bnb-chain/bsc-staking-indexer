@@ -56,8 +56,6 @@ func New(cfg Config, store store.Store) *CC {
 
 func (c *CC) Start() {
 	c.scheduler.StartAsync()
-	// print when start
-	go c.ComputeAndSend()
 }
 
 func (c *CC) ComputeAndSend() {
